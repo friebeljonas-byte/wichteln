@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Wichtel-Losung</title>
+<style>
+  :root {
+    --bg: #fbf7f2; --card: #ffffff; --ink: #2b2420; --muted: #75685f;
+    --accent: #b3261e; --accent-ink: #ffffff; --line: #e7ddd3; --ok: #2e7d4f; --soft: #f4ece4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1d1916; --card: #27221e; --ink: #f1e9e2; --muted: #b3a69b; --accent: #e5534b;
+            --accent-ink: #1d1916; --line: #3b342e; --ok: #6cc795; --soft: #312a25; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         background: var(--bg); color: var(--ink); }
+  main { max-width: 640px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 1.6rem; margin: 8px 0 4px; }
+  h1 a { color: inherit; text-decoration: none; }
+  h2 { font-size: 1.15rem; margin: 0 0 10px; }
+  p.lead { color: var(--muted); margin: 0 0 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+  label { display: block; font-weight: 600; font-size: .9rem; margin: 10px 0 4px; }
+  input[type=text], input[type=date], input[type=password], textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--bg); color: var(--ink); font: inherit; }
+  textarea { min-height: 90px; resize: vertical; }
+  .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .row input { flex: 1; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 10px; padding: 10px 14px; cursor: pointer;
+           background: var(--soft); color: var(--ink); }
+  button.primary { background: var(--accent); color: var(--accent-ink); width: 100%; padding: 14px; font-size: 1.05rem; }
+  button.icon { padding: 8px 12px; color: var(--muted); }
+  button.small { padding: 6px 10px; font-size: .88rem; }
+  button:disabled { opacity: .5; cursor: default; }
+  .hint { color: var(--muted); font-size: .88rem; }
+  .err { color: var(--accent); font-weight: 600; margin-top: 10px; }
+  .okmsg { color: var(--ok); font-weight: 600; margin-top: 10px; }
+  .chk { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; margin: 8px 0; }
+  .chk input { margin-top: 4px; }
+  .excl { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .pill { background: var(--soft); border-radius: 999px; padding: 4px 6px 4px 12px; display: inline-flex; gap: 6px; align-items: center; }
+  .pill button { padding: 2px 8px; background: transparent; }
+  select { font: inherit; padding: 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); flex: 1; min-width: 0; }
+  .person { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .person:first-child { border-top: 0; }
+  .person .name { font-weight: 600; }
+  .status { font-size: .85rem; color: var(--muted); }
+  .status .yes { color: var(--ok); }
+  pre.msg { white-space: pre-wrap; word-break: break-word; background: var(--bg); border: 1px solid var(--line);
+            border-radius: 10px; padding: 10px; font: .85rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 8px 0 0; user-select: all; }
+  .names { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+  .names button { padding: 14px 10px; text-align: center; }
+  .names button small { display: block; font-weight: 400; color: var(--muted); font-size: .78rem; }
+  .reveal { text-align: center; padding: 28px 16px; }
+  .reveal .big { font-size: 2.2rem; font-weight: 800; color: var(--accent); margin: 8px 0; }
+  .facts { display: grid; gap: 6px; text-align: left; margin-top: 18px; background: var(--soft); border-radius: 12px; padding: 12px 14px; }
+  .wishbox { white-space: pre-wrap; word-break: break-word; background: var(--soft); border-radius: 12px;
+             padding: 14px; font-size: 1.05rem; margin-bottom: 6px; }
+  .warn { background: var(--soft); border-left: 4px solid var(--accent); padding: 10px 12px; border-radius: 8px; font-size: .92rem; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1><a href="#">🎁 Wichtel-Losung</a></h1>
+  <p class="lead" id="lead">Wichteln per Signal-Gruppe: ein Link für alle, jede/r sieht nur den eigenen Wichtel. Alles wird Ende-zu-Ende-verschlüsselt.</p>
+  <div class="card err hidden" id="fatal"></div>
+
+  <!-- ===================== Neue Runde ===================== -->
+  <section id="view-new" class="hidden">
+    <div class="card hidden" id="my-rounds">
+      <h2>Deine Runden</h2>
+      <div id="my-rounds-list"></div>
+    </div>
+    <div class="card">
+      <h2>1 · Die Runde</h2>
+      <label for="ev-name">Name der Runde</label>
+      <input type="text" id="ev-name" placeholder="z. B. Wichteln 2026">
+      <div class="grid2">
+        <div><label for="ev-budget">Budget</label><input type="text" id="ev-budget" placeholder="z. B. 20 €"></div>
+        <div><label for="ev-date">Bescherung am</label><input type="date" id="ev-date"></div>
+      </div>
+      <label for="ev-note">Hinweis für alle (optional)</label>
+      <input type="text" id="ev-note" placeholder="z. B. Geschenke bitte bis 22.12. mitbringen">
+    </div>
+    <div class="card">
+      <h2>2 · Wer macht mit?</h2>
+      <div id="people"></div>
+      <button id="btn-add">+ Person hinzufügen</button>
+    </div>
+    <div class="card">
+      <h2>3 · Regeln (optional)</h2>
+      <label class="chk"><input type="checkbox" id="opt-mutual" checked> Keine Pärchen: A beschenkt B und B beschenkt A soll nicht vorkommen</label>
+      <label class="chk"><input type="checkbox" id="opt-cycle"> Eine große Runde: alle zusammen bilden eine einzige Kette (A → B → C → … → A)</label>
+      <label>Wer soll wen nicht ziehen? (wirkt in beide Richtungen, z. B. für Paare)</label>
+      <div class="row">
+        <select id="ex-a"></select><span>⇄</span><select id="ex-b"></select>
+        <button id="btn-ex">+</button>
+      </div>
+      <div class="excl" id="excl-list"></div>
+    </div>
+    <button class="primary" id="btn-draw">Auslosen und Runde anlegen 🎲</button>
+    <div class="err hidden" id="draw-err"></div>
+  </section>
+
+  <!-- ===================== Organisation ===================== -->
+  <section id="view-admin" class="hidden">
+    <div class="card">
+      <h2 id="adm-title">Organisation</h2>
+      <div class="warn">Diese Seite ist <b>deine Verwaltungsseite</b>. Speichere ihren Link (Lesezeichen oder an dich selbst in Signal schicken), aber teile ihn mit niemandem. Wer wen zieht, siehst auch du hier nicht.</div>
+    </div>
+    <div class="card">
+      <h2>Nachricht für die Signal-Gruppe</h2>
+      <p class="hint">Kopieren und in die Gruppe posten. Alle nutzen denselben Link.</p>
+      <pre class="msg" id="adm-group-msg"></pre>
+      <div class="actions"><button data-copy="adm-group-msg">Kopieren</button></div>
+    </div>
+    <div class="card">
+      <h2>Wer ist schon dabei?</h2>
+      <div id="adm-list"></div>
+      <div class="actions"><button id="adm-refresh">Aktualisieren</button></div>
+      <p class="hint">„Freigeben“ löscht PIN und Wunsch eines Platzes. Das brauchst du, wenn jemand die PIN vergessen hat, der Platz nach falschen PINs gesperrt ist oder sich jemand unter falschem Namen angemeldet hat.</p>
+    </div>
+    <div class="card">
+      <h2>Runde löschen</h2>
+      <p class="hint">Löscht alle Daten dieser Runde vom Server. Sinnvoll nach der Bescherung.</p>
+      <button id="adm-delete">Runde löschen</button>
+    </div>
+  </section>
+
+  <!-- ===================== Teilnehmende ===================== -->
+  <section id="view-join" class="hidden">
+    <div class="card" id="join-pick">
+      <h2>Wer bist du?</h2>
+      <p class="hint">Tippe auf <b>deinen eigenen</b> Namen.</p>
+      <div class="names" id="join-names"></div>
+    </div>
+
+    <div class="card hidden" id="join-pin">
+      <h2 id="pin-title"></h2>
+      <p class="hint" id="pin-hint"></p>
+      <form id="pin-form">
+        <label for="pin1" id="pin1-label">PIN</label>
+        <input type="password" id="pin1" autocomplete="off" inputmode="text">
+        <div id="pin2-wrap">
+          <label for="pin2">PIN wiederholen</label>
+          <input type="password" id="pin2" autocomplete="off">
+        </div>
+        <div class="actions">
+          <button type="submit" class="primary" id="pin-go">Weiter</button>
+        </div>
+        <div class="actions"><button type="button" id="pin-back">← Anderer Name</button></div>
+        <div class="err hidden" id="pin-err"></div>
+      </form>
+    </div>
+
+    <div class="hidden" id="join-me">
+      <div class="card reveal">
+        <div class="hint" id="me-hello"></div>
+        <div>Du beschenkst</div>
+        <div class="big" id="me-target"></div>
+        <div class="hint">Psst – nicht verraten! 🤫</div>
+        <div class="facts" id="me-facts"></div>
+      </div>
+      <div class="card">
+        <h2>🎁 Wunschzettel von <span class="t-name"></span></h2>
+        <div id="tw-show" class="hidden">
+          <div class="wishbox" id="tw-text"></div>
+          <div class="hint" id="tw-when"></div>
+        </div>
+        <p class="hint" id="tw-none"><span class="t-name"></span> hat noch keinen Wunsch eingetragen. Schau später nochmal vorbei.</p>
+        <div class="actions"><button id="tw-refresh" class="small">Aktualisieren</button></div>
+      </div>
+      <div class="card">
+        <h2>✍️ Dein Wunsch</h2>
+        <p class="hint">Lesen kann ihn nur dein Wichtel. Du kannst ihn jederzeit ändern.</p>
+        <textarea id="ow-text" placeholder="z. B. Ein gutes Buch, Schokolade (gern zartbitter), keine Duftkerzen 🙂"></textarea>
+        <div class="actions"><button id="ow-save">Wunsch speichern</button></div>
+        <div class="hidden" id="ow-msg"></div>
+      </div>
+      <div class="actions"><button id="me-logout">Abmelden</button></div>
+      <p class="hint">Auf diesem Gerät bleibst du angemeldet. Auf einem anderen Gerät meldest du dich mit deinem Namen und deiner PIN an.</p>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ======================= KONFIGURATION =======================
+   Aus dem Supabase-Dashboard: Project Settings → API (bzw. "API Keys").
+   Der "anon"/"publishable" Key ist öffentlich und darf hier stehen.  */
+const SUPABASE_URL = "https://iucjshbrdpjepqdwtlyr.supabase.co";
+const SUPABASE_KEY = "sb_publishable_9AeWXLlK_pxkuuybDH_1sw_OQaYCFYP";
+/* ============================================================= */
+
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const show = (id, on = true) => $(id).classList.toggle("hidden", !on);
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+    del(k) { try { localStorage.removeItem(k); } catch {} },
+  };
+  const fmtDate = (d) => { if (!d) return ""; const [y, m, day] = d.split("-"); return `${day}.${m}.${y}`; };
+  const fmtTime = (t) => new Date(t).toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" });
+  const baseUrl = () => location.origin + location.pathname;
+
+  // ---------- Server ----------
+  const configured = !SUPABASE_URL.includes("DEIN-PROJEKT") && !SUPABASE_KEY.startsWith("DEIN-");
+  async function rpc(fn, args) {
+    const headers = { "Content-Type": "application/json", apikey: SUPABASE_KEY };
+    if (SUPABASE_KEY.startsWith("eyJ")) headers.Authorization = "Bearer " + SUPABASE_KEY; // ältere JWT-Keys
+    let res;
+    try {
+      res = await fetch(`${SUPABASE_URL.replace(/\/$/, "")}/rest/v1/rpc/${fn}`,
+                        { method: "POST", headers, body: JSON.stringify(args) });
+    } catch { throw new Error("Keine Verbindung zum Server. Bitte Internetverbindung prüfen."); }
+    if (!res.ok) {
+      let m = ""; try { m = (await res.json()).message || ""; } catch {}
+      throw new Error(m || `Serverfehler (${res.status})`);
+    }
+    return res.json();
+  }
+
+  // ---------- Verschlüsselung (AES-GCM, Web Crypto) ----------
+  const enc = new TextEncoder(), dec = new TextDecoder();
+  const rand = (n) => crypto.getRandomValues(new Uint8Array(n));
+  function b64u(bytes) {
+    let s = ""; bytes.forEach(b => s += String.fromCharCode(b));
+    return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function unb64u(str) { return Uint8Array.from(atob(str.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0)); }
+  const aes = (raw) => crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
+  async function seal(raw, obj) {
+    const iv = rand(12);
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await aes(raw), enc.encode(JSON.stringify(obj))));
+    const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12);
+    return b64u(out);
+  }
+  async function unseal(raw, str) {
+    const b = unb64u(str);
+    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b.slice(0, 12) }, await aes(raw), b.slice(12));
+    return JSON.parse(dec.decode(pt));
+  }
+
+  // ---------- Auslosung ----------
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  function draw(n, forbidden, noMutual, oneCycle) {
+    const bad = (a, b) => a === b || forbidden.has(a + ":" + b);
+    if (oneCycle) {
+      const order = shuffle([...Array(n).keys()]);
+      const path = [order[0]], used = new Set(path);
+      const rec = () => {
+        if (path.length === n) return !bad(path[n - 1], path[0]);
+        for (const c of shuffle(order.slice())) {
+          if (used.has(c) || bad(path[path.length - 1], c)) continue;
+          path.push(c); used.add(c);
+          if (rec()) return true;
+          path.pop(); used.delete(c);
+        }
+        return false;
+      };
+      if (!rec()) return null;
+      const t = Array(n);
+      path.forEach((p, i) => t[p] = path[(i + 1) % n]);
+      return t;
+    }
+    const t = Array(n).fill(-1), taken = new Set();
+    const givers = shuffle([...Array(n).keys()]);
+    const rec = (k) => {
+      if (k === n) return true;
+      const g = givers[k];
+      for (const r of shuffle([...Array(n).keys()])) {
+        if (taken.has(r) || bad(g, r)) continue;
+        if (noMutual && t[r] === g) continue;
+        t[g] = r; taken.add(r);
+        if (rec(k + 1)) return true;
+        t[g] = -1; taken.delete(r);
+      }
+      return false;
+    };
+    return rec(0) ? t : null;
+  }
+
+  // ---------- Kopieren ----------
+  async function copy(text) { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } }
+  document.querySelectorAll("[data-copy]").forEach(b => b.addEventListener("click", async () => {
+    const pre = $(b.dataset.copy);
+    if (await copy(pre.textContent)) { b.textContent = "Kopiert!"; setTimeout(() => b.textContent = "Kopieren", 1500); }
+    else {
+      const sel = getSelection(), r = document.createRange(); r.selectNodeContents(pre); sel.removeAllRanges(); sel.addRange(r);
+      b.textContent = "Text ist markiert – jetzt kopieren";
+    }
+  }));
+  // Zweistufige Bestätigung statt confirm()
+  function confirmButton(btn, label, action) {
+    const orig = btn.textContent;
+    btn.onclick = () => {
+      if (btn.dataset.armed) { delete btn.dataset.armed; btn.textContent = orig; action(); return; }
+      btn.dataset.armed = "1"; btn.textContent = label;
+      setTimeout(() => { if (btn.dataset.armed) { delete btn.dataset.armed; btn.textContent = orig; } }, 4000);
+    };
+  }
+
+  // ---------- Routing ----------
+  // #g=<rundenId>.<schlüssel>            → Teilnehmende
+  // #a=<rundenId>.<schlüssel>.<admin>    → Organisation
+  function parseHash() {
+    const h = location.hash.slice(1);
+    let m = h.match(/^g=([0-9a-f-]{36})\.([A-Za-z0-9_-]{22})$/);
+    if (m) return { view: "join", id: m[1], key: unb64u(m[2]), keyStr: m[2] };
+    m = h.match(/^a=([0-9a-f-]{36})\.([A-Za-z0-9_-]{22})\.([A-Za-z0-9_-]{32})$/);
+    if (m) return { view: "admin", id: m[1], key: unb64u(m[2]), keyStr: m[2], admin: m[3] };
+    if (h.startsWith("g=") || h.startsWith("a=")) return { view: "broken" };
+    return { view: "new" };
+  }
+  function fatal(msg) { $("fatal").textContent = msg; show("fatal"); }
+  async function route() {
+    for (const v of ["view-new", "view-admin", "view-join", "fatal"]) show(v, false);
+    if (!configured) {
+      fatal("Die App ist noch nicht eingerichtet: In index.html fehlen SUPABASE_URL und SUPABASE_KEY (siehe Anleitung).");
+      return;
+    }
+    const r = parseHash();
+    try {
+      if (r.view === "join") await initJoin(r);
+      else if (r.view === "admin") await initAdmin(r);
+      else if (r.view === "broken") fatal("Der Link ist unvollständig. Bitte den ganzen Link aus der Signal-Nachricht öffnen.");
+      else initNew();
+    } catch (e) { fatal(e.message); }
+  }
+  window.addEventListener("hashchange", route);
+
+  async function loadRound(r) {
+    const data = await rpc("wichtel_get", { p_round: r.id });
+    if (!data) throw new Error("Diese Runde gibt es nicht (mehr). Vielleicht wurde sie gelöscht.");
+    let meta;
+    try { meta = await unseal(r.key, data.meta); }
+    catch { throw new Error("Der Link ist beschädigt: Die Daten lassen sich nicht entschlüsseln."); }
+    return { meta, slots: data.slots };
+  }
+  function groupMsg(meta, link) {
+    const lines = [`🎁 ${meta.e}: Die Lose sind gezogen!`, "",
+      "So geht's:",
+      "1. Link öffnen und auf euren eigenen Namen tippen",
+      "2. Eine PIN festlegen und gut merken",
+      "3. Ihr seht, wen ihr beschenkt, und tragt euren Wunsch ein",
+      "", `👉 ${link}`];
+    const extra = [];
+    if (meta.b) extra.push(`💶 Budget: ${meta.b}`);
+    if (meta.d) extra.push(`📅 Bescherung: ${fmtDate(meta.d)}`);
+    if (meta.n) extra.push(`📝 ${meta.n}`);
+    if (extra.length) lines.push("", ...extra);
+    lines.push("", "Bitte nur den eigenen Namen anklicken! 🤫");
+    return lines.join("\n");
+  }
+
+  // ======================= Neue Runde =======================
+  let state;
+  let newInit = false;
+  function initNew() {
+    show("view-new");
+    const rounds = store.get("wichtel-runden") || [];
+    show("my-rounds", rounds.length > 0);
+    const list = $("my-rounds-list"); list.innerHTML = "";
+    rounds.forEach(rd => {
+      const row = document.createElement("div"); row.className = "person";
+      const a = document.createElement("a"); a.href = "#" + rd.hash; a.textContent = rd.name;
+      const s = document.createElement("span"); s.className = "status"; s.textContent = fmtTime(rd.t);
+      row.append(a, s); list.append(row);
+    });
+    if (newInit) return;
+    newInit = true;
+    state = store.get("wichtel-entwurf") || {
+      name: "Wichteln " + new Date().getFullYear(), budget: "", date: "", note: "",
+      people: ["", "", "", "", "", ""], excl: [], mutual: true, cycle: false,
+    };
+    const save = () => store.set("wichtel-entwurf", state);
+    const names = () => state.people.map(s => s.trim()).filter(Boolean);
+    const renderPeople = () => {
+      const box = $("people"); box.innerHTML = "";
+      state.people.forEach((p, i) => {
+        const row = document.createElement("div"); row.className = "row";
+        const inp = document.createElement("input");
+        inp.type = "text"; inp.value = p; inp.placeholder = "Name " + (i + 1);
+        inp.addEventListener("input", () => { state.people[i] = inp.value; save(); renderExclSelects(); });
+        const del = document.createElement("button");
+        del.className = "icon"; del.textContent = "✕"; del.title = "Entfernen";
+        del.addEventListener("click", () => { state.people.splice(i, 1); save(); renderPeople(); renderExclSelects(); });
+        row.append(inp, del); box.append(row);
+      });
+    };
+    const renderExclSelects = () => {
+      for (const id of ["ex-a", "ex-b"]) {
+        const sel = $(id), cur = sel.value; sel.innerHTML = "";
+        names().forEach(n => { const o = document.createElement("option"); o.value = o.textContent = n; sel.append(o); });
+        if (names().includes(cur)) sel.value = cur;
+      }
+      if ($("ex-a").value === $("ex-b").value && names().length > 1) $("ex-b").selectedIndex = 1;
+    };
+    const renderExcl = () => {
+      const box = $("excl-list"); box.innerHTML = "";
+      state.excl.forEach(([a, b], i) => {
+        const pill = document.createElement("span"); pill.className = "pill"; pill.textContent = a + " ⇄ " + b;
+        const x = document.createElement("button"); x.textContent = "✕";
+        x.addEventListener("click", () => { state.excl.splice(i, 1); save(); renderExcl(); });
+        pill.append(x); box.append(pill);
+      });
+    };
+    const bind = (id, key) => { const el = $(id); el.value = state[key]; el.addEventListener("input", () => { state[key] = el.value; save(); }); };
+    bind("ev-name", "name"); bind("ev-budget", "budget"); bind("ev-date", "date"); bind("ev-note", "note");
+    $("opt-mutual").checked = state.mutual; $("opt-cycle").checked = state.cycle;
+    $("opt-mutual").addEventListener("change", e => { state.mutual = e.target.checked; save(); });
+    $("opt-cycle").addEventListener("change", e => { state.cycle = e.target.checked; save(); });
+    $("btn-add").addEventListener("click", () => { state.people.push(""); save(); renderPeople(); });
+    $("btn-ex").addEventListener("click", () => {
+      const a = $("ex-a").value, b = $("ex-b").value;
+      if (!a || !b || a === b) return;
+      if (!state.excl.some(([x, y]) => (x === a && y === b) || (x === b && y === a))) state.excl.push([a, b]);
+      save(); renderExcl();
+    });
+    renderPeople(); renderExclSelects(); renderExcl();
+
+    $("btn-draw").addEventListener("click", async () => {
+      const err = $("draw-err"); show("draw-err", false);
+      const fail = (msg) => { err.textContent = msg; show("draw-err"); };
+      const list = names();
+      if (list.length < 3) return fail("Bitte mindestens 3 Namen eintragen.");
+      if (new Set(list.map(s => s.toLowerCase())).size !== list.length)
+        return fail("Jeder Name darf nur einmal vorkommen. Bei gleichen Vornamen bitte den Anfangsbuchstaben des Nachnamens dazuschreiben.");
+      const forbidden = new Set();
+      state.excl.forEach(([a, b]) => {
+        const i = list.indexOf(a), j = list.indexOf(b);
+        if (i >= 0 && j >= 0) { forbidden.add(i + ":" + j); forbidden.add(j + ":" + i); }
+      });
+      const t = draw(list.length, forbidden, state.mutual, state.cycle);
+      if (!t) return fail("Mit diesen Regeln ist keine Auslosung möglich. Bitte eine Regel lockern.");
+
+      const btn = $("btn-draw"); btn.disabled = true; btn.textContent = "Wird angelegt …";
+      try {
+        const gk = rand(16), admin = b64u(rand(24)), wk = list.map(() => rand(16));
+        const meta = { v: 1, e: state.name.trim() || "Wichteln", b: state.budget.trim(), d: state.date,
+                       n: state.note.trim(), names: list };
+        const payloads = await Promise.all(list.map((g, i) => seal(gk, {
+          g, i, r: list[t[i]], ri: t[i], ok: b64u(wk[i]), rk: b64u(wk[t[i]]) })));
+        const id = await rpc("wichtel_create", { p_meta: await seal(gk, meta), p_admin: admin, p_payloads: payloads });
+        const hash = `a=${id}.${b64u(gk)}.${admin}`;
+        const rounds = store.get("wichtel-runden") || [];
+        rounds.unshift({ name: meta.e, hash, t: Date.now() });
+        store.set("wichtel-runden", rounds.slice(0, 20));
+        location.hash = hash;
+      } catch (e) { fail("Anlegen fehlgeschlagen: " + e.message); }
+      finally { btn.disabled = false; btn.textContent = "Auslosen und Runde anlegen 🎲"; }
+    });
+  }
+
+  // ======================= Organisation =======================
+  async function initAdmin(r) {
+    const { meta } = await loadRound(r);
+    show("view-admin");
+    $("adm-title").textContent = "Organisation: " + meta.e;
+    const groupLink = `${baseUrl()}#g=${r.id}.${r.keyStr}`;
+    $("adm-group-msg").textContent = groupMsg(meta, groupLink);
+    const render = async () => {
+      const { slots } = await loadRound(r);
+      const box = $("adm-list"); box.innerHTML = "";
+      slots.forEach(s => {
+        const row = document.createElement("div"); row.className = "person";
+        const left = document.createElement("div");
+        const nm = document.createElement("div"); nm.className = "name"; nm.textContent = meta.names[s.idx];
+        const st = document.createElement("div"); st.className = "status";
+        st.innerHTML = (s.locked ? "🔒 gesperrt (zu viele falsche PINs)" :
+                        s.claimed ? '<span class="yes">✓ angemeldet</span>' : "noch nicht angemeldet") +
+                       (s.wish ? ' · <span class="yes">Wunsch ✓</span>' : "");
+        left.append(nm, st);
+        row.append(left);
+        if (s.claimed || s.locked) {
+          const b = document.createElement("button"); b.className = "small"; b.textContent = "Freigeben";
+          confirmButton(b, "Wirklich freigeben?", async () => {
+            const res = await rpc("wichtel_admin_reset", { p_round: r.id, p_admin: r.admin, p_idx: s.idx });
+            if (!res.ok) alertBox("Freigeben fehlgeschlagen.");
+            render();
+          });
+          row.append(b);
+        }
+        box.append(row);
+      });
+    };
+    $("adm-refresh").onclick = render;
+    confirmButton($("adm-delete"), "Wirklich alles löschen? Nochmal tippen", async () => {
+      const res = await rpc("wichtel_admin_delete", { p_round: r.id, p_admin: r.admin });
+      if (!res.ok) return alertBox("Löschen fehlgeschlagen.");
+      store.set("wichtel-runden", (store.get("wichtel-runden") || []).filter(x => !x.hash.includes(r.id)));
+      location.hash = "";
+    });
+    await render();
+  }
+  function alertBox(msg) { fatal(msg); window.scrollTo(0, 0); }
+
+  // ======================= Teilnehmende =======================
+  async function initJoin(r) {
+    const round = await loadRound(r);
+    const { meta } = round;
+    show("view-join");
+    $("lead").textContent = meta.e + (meta.d ? " · Bescherung am " + fmtDate(meta.d) : "");
+    const sessKey = "wichtel-sitzung:" + r.id;
+    let me = null; // { idx, pin, data }
+
+    const showPick = (slots) => {
+      show("join-pick"); show("join-pin", false); show("join-me", false);
+      const box = $("join-names"); box.innerHTML = "";
+      meta.names.forEach((n, i) => {
+        const b = document.createElement("button");
+        b.textContent = n;
+        const sm = document.createElement("small");
+        sm.textContent = slots[i].locked ? "gesperrt" : slots[i].claimed ? "schon angemeldet" : "";
+        b.append(sm);
+        b.addEventListener("click", () => showPin(i, slots[i]));
+        box.append(b);
+      });
+    };
+    const showPin = (i, slot) => {
+      show("join-pick", false); show("join-pin"); show("pin-err", false);
+      $("pin1").value = ""; $("pin2").value = "";
+      const first = !slot.claimed;
+      $("pin-title").textContent = `Ich bin ${meta.names[i]}`;
+      $("pin-hint").textContent = first
+        ? "Lege eine PIN fest (mindestens 4 Zeichen) und merk sie dir gut. Damit kommst du später und auf anderen Geräten wieder rein."
+        : `${meta.names[i]} ist schon angemeldet. Gib deine PIN ein. Warst du das nicht? Dann sag der Organisation Bescheid, sie kann den Platz freigeben.`;
+      $("pin1-label").textContent = first ? "Neue PIN" : "Deine PIN";
+      show("pin2-wrap", first);
+      $("pin-form").onsubmit = async (e) => {
+        e.preventDefault();
+        const err = (m) => { $("pin-err").textContent = m; show("pin-err"); };
+        const p1 = $("pin1").value;
+        if (first && p1.length < 4) return err("Die PIN braucht mindestens 4 Zeichen.");
+        if (first && p1 !== $("pin2").value) return err("Die beiden PINs stimmen nicht überein.");
+        $("pin-go").disabled = true;
+        try { await login(i, p1, err); } finally { $("pin-go").disabled = false; }
+      };
+      $("pin-back").onclick = async () => showPick((await loadRound(r)).slots);
+      $("pin1").focus();
+    };
+    const errorText = (res) => ({
+      wrong_pin: `Falsche PIN.${res.left !== undefined ? ` Noch ${res.left} Versuch${res.left === 1 ? "" : "e"}.` : ""}`,
+      locked: "Zu viele falsche Versuche. Der Platz ist gesperrt. Bitte die Organisation, ihn freizugeben.",
+      pin_short: "Die PIN braucht mindestens 4 Zeichen.",
+      not_found: "Diesen Platz gibt es nicht.",
+    }[res.error] || "Anmeldung fehlgeschlagen.");
+    async function login(i, pin, onErr) {
+      const res = await rpc("wichtel_claim", { p_round: r.id, p_idx: i, p_pin: pin });
+      if (!res.ok) {
+        if (onErr) return onErr(errorText(res));
+        store.del(sessKey); return showPick((await loadRound(r)).slots);
+      }
+      const data = await unseal(r.key, res.payload);
+      me = { idx: i, pin, data };
+      store.set(sessKey, { idx: i, pin });
+      await showMe();
+    }
+    async function showMe() {
+      const { slots } = await loadRound(r);
+      show("join-pick", false); show("join-pin", false); show("join-me");
+      const d = me.data;
+      $("me-hello").textContent = `Hallo ${d.g}!`;
+      $("me-target").textContent = d.r;
+      document.querySelectorAll(".t-name").forEach(s => s.textContent = d.r);
+      const f = $("me-facts"); f.innerHTML = "";
+      const add = (label, val) => { if (!val) return; const div = document.createElement("div");
+        const b = document.createElement("b"); b.textContent = label + ": "; div.append(b, val); f.append(div); };
+      add("💶 Budget", meta.b); add("📅 Bescherung", fmtDate(meta.d)); add("📝 Hinweis", meta.n);
+      f.classList.toggle("hidden", !f.children.length);
+      // Wunsch des Wichtelkinds
+      const tw = slots[d.ri].wish;
+      let twData = null;
+      if (tw) { try { twData = await unseal(unb64u(d.rk), tw); } catch {} }
+      show("tw-show", !!twData); show("tw-none", !twData);
+      if (twData) { $("tw-text").textContent = twData.w; $("tw-when").textContent = "Stand: " + fmtTime(slots[d.ri].wish_at); }
+      // Eigener Wunsch
+      const ow = slots[me.idx].wish;
+      $("ow-text").value = "";
+      if (ow) { try { $("ow-text").value = (await unseal(unb64u(d.ok), ow)).w; } catch {} }
+    }
+    $("tw-refresh").onclick = () => showMe();
+    $("ow-save").onclick = async () => {
+      const msg = $("ow-msg");
+      const w = $("ow-text").value.trim();
+      $("ow-save").disabled = true;
+      try {
+        const sealed = w ? await seal(unb64u(me.data.ok), { w }) : "";
+        const res = await rpc("wichtel_set_wish", { p_round: r.id, p_idx: me.idx, p_pin: me.pin, p_wish: sealed });
+        msg.className = res.ok ? "okmsg" : "err";
+        msg.textContent = res.ok ? (w ? "✓ Gespeichert. Dein Wichtel kann ihn jetzt lesen." : "✓ Wunsch gelöscht.") : errorText(res);
+      } catch (e) { msg.className = "err"; msg.textContent = e.message; }
+      finally { $("ow-save").disabled = false; }
+    };
+    $("me-logout").onclick = async () => { store.del(sessKey); me = null; showPick((await loadRound(r)).slots); };
+
+    const sess = store.get(sessKey);
+    if (sess) await login(sess.idx, sess.pin, null);
+    else showPick(round.slots);
+  }
+
+  route();
+  window.__wichtel = { draw, seal, unseal };
+})();
+</script>
+</body>
+</html>
